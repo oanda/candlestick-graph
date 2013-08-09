@@ -6,12 +6,27 @@
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 
     <script type="text/javascript">
-
         $('document').ready( function() {
-                
-                function drawGraph() {
 
-                    var instrument = 'EUR_USD';
+                //Populate the select box:
+                OANDA.rate.instruments(['instrument'], function(response) {
+                    for(var i = 0; i < response.instruments.length; i++) {
+                        var instrument = response.instruments[i].instrument;
+                        console.log(instrument);
+                        $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
+                         //Set the select box to be EUR_USD
+                        $('#instrumentSelector').val('EUR_USD');
+                    }
+                });
+                
+                               //Clear the graph if the select box changes:
+                $('#instrumentSelector').change( function() {
+                    $('#chart').empty();
+                    drawGraph($('#instrumentSelector').val());
+                });
+                
+                function drawGraph(instrument) {
+
                     var candleTime = new Date("2013-08-09T00:00:00Z");
                     //Get current rate:
                     OANDA.rate.history(instrument, { 'start' : candleTime.toISOString(), candleFormat : 'midpoint', granularity : 'M30'}, function(response) {
@@ -22,7 +37,7 @@
                         }
                         var data = new google.visualization.DataTable();
                         data.addColumn('datetime', 'Time');
-                        data.addColumn('number', 'EUR_USD');
+                        data.addColumn('number', instrument);
                         data.addColumn('number', '2');
                         data.addColumn('number', '3');
                         data.addColumn('number', '4');
@@ -31,17 +46,26 @@
                             data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
                         }
 
-                        var options = { 'title' : instrument, height : 500 };
+                        var options = { 'title' : "Candlesticks", height : 500 };
                         var chart = new google.visualization.CandlestickChart(document.getElementById('chart'));
                         chart.draw(data, options);
                     });
                 }
 
-                google.load("visualization", "1", {packages:["corechart"], "callback" : drawGraph});
+                google.load("visualization", "1", {packages:["corechart"], "callback" : function() { drawGraph($('#instrumentSelector').val()) }});
         });
     </script>
 
+    <style>
+        #chart {
+            overflow-x:auto;
+            overflow-y:hidden;
+        }
+    </style>
+
     <body>
+        <form>
+            <select id="instrumentSelector"></select>
         <div id='chart'>
         </div>
     </body>
