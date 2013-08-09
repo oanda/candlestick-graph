@@ -1,0 +1,50 @@
+<html>
+
+    <title>Simple rates graph</title>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript" src="https://rawgithub.com/mrpoulin/oandajs/update/oanda.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
+    <script type="text/javascript">
+
+        $('document').ready( function() {
+                
+                function drawGraph() {
+
+                    var instrument = 'EUR_USD';
+                    var candleTime = new Date("2013-08-09T00:00:00Z");
+                    //Get current rate:
+                    OANDA.rate.history(instrument, { 'start' : candleTime.toISOString(), candleFormat : 'midpoint', granularity : 'M30'}, function(response) {
+
+                        if(response.error) {
+                            console.log(response.error);
+                            return;
+                        }
+                        var data = new google.visualization.DataTable();
+                        data.addColumn('datetime', 'Time');
+                        data.addColumn('number', 'EUR_USD');
+                        data.addColumn('number', '2');
+                        data.addColumn('number', '3');
+                        data.addColumn('number', '4');
+                        for(i = 0 ; i < response.candles.length; i++) {
+                            candle = response.candles[i];
+                            data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
+                        }
+
+                        var options = { 'title' : instrument, height : 500 };
+                        var chart = new google.visualization.CandlestickChart(document.getElementById('chart'));
+                        chart.draw(data, options);
+                    });
+                }
+
+                google.load("visualization", "1", {packages:["corechart"], "callback" : drawGraph});
+        });
+    </script>
+
+    <body>
+        <div id='chart'>
+        </div>
+    </body>
+
+</html>
+
