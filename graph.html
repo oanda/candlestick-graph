@@ -69,10 +69,10 @@
                                 }
                                 var data = new google.visualization.DataTable();
                                 data.addColumn('datetime', 'Time');
-                                data.addColumn('number', instrument);
-                                data.addColumn('number', '2');
-                                data.addColumn('number', '3');
-                                data.addColumn('number', '4');
+                                data.addColumn('number', 'lowMid');
+                                data.addColumn('number', 'closeMid');
+                                data.addColumn('number', 'openMid');
+                                data.addColumn('number', 'highMid');
 
                                 for(i = 0 ; i < response.candles.length; i++) {
                                     candle = response.candles[i];
@@ -109,14 +109,12 @@
                     $('#granularitySelector').val('M30');
                 }
 
-
                 //Populate the instrument select box:
                 OANDA.rate.instruments(['instrument'], function(response) {
                     for(var i = 0; i < response.instruments.length; i++) {
                         var instrument = response.instruments[i].instrument;
                         $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
                     }
-
                     //Make sure an instrument is set and everything is ready to go:
                     $('#instrumentSelector').val('EUR_USD');
                 });
