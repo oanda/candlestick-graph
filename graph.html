@@ -1,144 +1,58 @@
-<html>
+<!DOCTYPE html>
 
-    <title>Simple rates graph</title>
-    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script type="text/javascript" src="https://rawgithub.com/mrpoulin/oandajs/update/oanda.js"></script>
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<html lang="en">
+    <head>
+        <title>Simple rates graph</title>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="https://rawgithub.com/mrpoulin/oandajs/update/oanda.js"></script>
+        <script src="https://www.google.com/jsapi"></script>
+        <script src="./candlestickChart.js"></script>
 
-    <script type="text/javascript">
+        <script>
 
-        google.load("visualization", "1", {packages:["corechart"]});
-        $('document').ready( function() {
-                var granularityTable = (function() {
+            google.load("visualization", "1", {packages:["corechart"]});
 
-                    var my = {};
-                    var granMap =  { 'S5'  : 5,  
-                                     'S10' : 10 , 
-                                     'S15' : 15, 
-                                     'S30' : 30, 
-                                     'M1'  : 60, 
-                                     'M2'  : 120, 
-                                     'M3'  : 180, 
-                                     'M5'  : 300, 
-                                     'M10' : 600, 
-                                     'M15' : 900,
-                                     'M30' : 1800, 
-                                     'H1'  : 3600,
-                                     'H2'  : 7200, 
-                                     'H3'  : 10800, 
-                                     'H4'  : 14400, 
-                                     'H6'  : 21600, 
-                                     'H8'  : 28800, 
-                                     'H12' : 43200, 
-                                     'D'   : 86400, 
-                                     'W'   : 604800,
-                                     'M'   : /*Depends on the month & year (for feb only). 0 for now.*/ 0,
-                                    };
+            $('document').ready( function() {
 
-                    my.granularities = Object.keys(granMap);
-                    my.granulatityToSeconds = function(gran) {
-                        if(!granMap[gran])
-                            return -1;
+                   var chart = new OCandlestickChart('EUR_USD', 'M30', document.getElementById('chart'));
 
-                        return granMap[gran];
+                   //Will run chart with default values.
+                   google.setOnLoadCallback(function() { chart.render() });
+
+                    //Populate the granularity select box:
+                    for(var i = 0; i < GranularityTable.granularities.length; i++) {
+                        gran = GranularityTable.granularities[i];
+                        $('#granularitySelector').append($('<option>', { text : gran, value : gran }))
+                        $('#granularitySelector').val('M30');
                     }
-                    return my;
 
-                }());
-
-                var candlestickChart = ( function(granTable) {
-                        var my = {};
-
-                        //"Private" variables
-                        var granularity = 'M30';
-                        var instrument = 'EUR_USD';
-                        chart = new google.visualization.CandlestickChart(document.getElementById('chart'));
-
-                        my.init = function(inst, gran) {
-                            granularity = gran;
-                            instrument = inst;
+                    //Populate the instrument select box:
+                    OANDA.rate.instruments(['instrument'], function(response) {
+                        for(var i = 0; i < response.instruments.length; i++) {
+                            var instrument = response.instruments[i].instrument;
+                            $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
                         }
+                        //Make sure an instrument is set and everything is ready to go:
+                        $('#instrumentSelector').val('EUR_USD');
+                    });
+                    
+                    $('#instrumentSelector').change( function() {
+                        chart.changeInstrument($('#instrumentSelector').val());
+                    });
 
-                        my.render = function render() {
-                            var candleTime = new Date("2013-08-09T00:00:00Z");
-                            //Get current rate:
-                            OANDA.rate.history(instrument, { 'start' : candleTime.toISOString(), candleFormat : 'midpoint', granularity : granularity}, function(response) {
-                                if(response.error) {
-                                    console.log(response.error);
-                                    return;
-                                }
-                                var data = new google.visualization.DataTable();
-                                data.addColumn('datetime', 'Time');
-                                data.addColumn('number', 'lowMid');
-                                data.addColumn('number', 'closeMid');
-                                data.addColumn('number', 'openMid');
-                                data.addColumn('number', 'highMid');
+                    $('#granularitySelector').change(function() {
+                        chart.changeGranularity($('#granularitySelector').val());
+                    });
+            });
+        </script>
 
-                                for(i = 0 ; i < response.candles.length; i++) {
-                                    candle = response.candles[i];
-                                    data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
-                                }
-
-                                var options = { 'title' : "Candlesticks", height : 600 };
-                                chart.draw(data, options);
-                            });
-
-                            my.changeGranularity = function(newGran) {
-                                chart.clearChart();
-                                granularity = newGran;
-                                my.render();
-                            }
-
-                            my.changeInstrument = function(newInst) {
-                                chart.clearChart();
-                                instrument = newInst;
-                                my.render();
-                            }
-                        }
-                        return my;
-
-                }(granularityTable));
-                
-                //Will run chart with default values.
-                google.setOnLoadCallback(candlestickChart.render);
-
-                //Populate the granularity select box:
-                for(var i = 0; i < granularityTable.granularities.length; i++) {
-                    gran = granularityTable.granularities[i];
-                    $('#granularitySelector').append($('<option>', { text : gran, value : gran }))
-                    $('#granularitySelector').val('M30');
-                }
-
-                //Populate the instrument select box:
-                OANDA.rate.instruments(['instrument'], function(response) {
-                    for(var i = 0; i < response.instruments.length; i++) {
-                        var instrument = response.instruments[i].instrument;
-                        $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
-                    }
-                    //Make sure an instrument is set and everything is ready to go:
-                    $('#instrumentSelector').val('EUR_USD');
-                });
-                
-               //Clear the graph if the select box changes:
-                $('#instrumentSelector').change( function() {
-                    candlestickChart.changeInstrument($('#instrumentSelector').val());
-                });
-
-                $('#granularitySelector').change(function() {
-                    candlestickChart.changeGranularity($('#granularitySelector').val());
-                });
-
-
-                
-        });
-    </script>
-
-    <style>
-        #chart {
-            overflow-x:auto;
-            overflow-y:hidden;
-        }
-    </style>
+        <style>
+            #chart {
+                overflow-x:auto;
+                overflow-y:hidden;
+            }
+        </style>
+    </head>
 
     <body>
         <form>
