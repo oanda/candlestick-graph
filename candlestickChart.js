@@ -1,56 +1,18 @@
-var GranularityTable = (function() {
-
-    var my = {};
-    var granMap =  { 'S5'  : 5,  
-        'S10' : 10 , 
-    'S15' : 15, 
-    'S30' : 30, 
-    'M1'  : 60, 
-    'M2'  : 120, 
-    'M3'  : 180, 
-    'M5'  : 300, 
-    'M10' : 600, 
-    'M15' : 900,
-    'M30' : 1800, 
-    'H1'  : 3600,
-    'H2'  : 7200, 
-    'H3'  : 10800, 
-    'H4'  : 14400, 
-    'H6'  : 21600, 
-    'H8'  : 28800, 
-    'H12' : 43200, 
-    'D'   : 86400, 
-    'W'   : 604800,
-    'M'   : /*Depends on the month & year (for feb only). 0 for now.*/ 0,
-    };
-
-    my.granularities = Object.keys(granMap);
-    my.granulatityToSeconds = function(gran) {
-        if(!granMap[gran]) {
-            return -1;
-        }
-
-        return granMap[gran];
-    };
-
-    return my;
-
-}());
-
-
-function OCandlestickChart(instrument, granularity, chartElement) {
+//OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandleStickChart.
+function OCandlestickChart(instrument, granularity, startTime, chartElement) {
 
     this.granularity = granularity;
     this.instrument = instrument;
+    //Force graph to start at midnight for now.
+    startTime.setHours(0,0,0);
+    this.startTime = startTime;
     this.chart = new google.visualization.CandlestickChart(chartElement);
 }
 
 OCandlestickChart.prototype.render = function() {
 
-    var candleTime = new Date("2013-08-09T00:00:00Z");
-    
     var self = this;
-    OANDA.rate.history(this.instrument, { 'start' : candleTime.toISOString(), candleFormat : 'midpoint', granularity : this.granularity}, function(response) {
+    OANDA.rate.history(this.instrument, { 'start' : this.startTime.toISOString(), candleFormat : 'midpoint', granularity : this.granularity }, function(response) {
         if(response.error) {
             console.log(response.error);
             return;
@@ -69,21 +31,49 @@ OCandlestickChart.prototype.render = function() {
         }
 
         var options = { 'title' : "Candlesticks", height : 600 };
-        console.log(self);
         self.chart.draw(data, options);
     });
 };
 
-OCandlestickChart.prototype.changeGranularity = function(granularity) {
+OCandlestickChart.prototype.setGranularity = function(granularity) {
 
-    this.chart.clearChart();
+    //TODO: Validation.
     this.granularity = granularity;
-    this.render();
-};
-
-OCandlestickChart.prototype.changeInstrument = function(instrument) {
-
     this.chart.clearChart();
-    this.instrument = instrument;
     this.render();
 };
+
+OCandlestickChart.prototype.setInstrument = function(instrument) {
+
+    //TODO: Validation?
+    this.instrument = instrument;
+    this.chart.clearChart();
+    this.render();
+};
+
+OCandlestickChart.prototype.setStartTime = function(params) {
+    
+    //TODO:Validation.
+    this.startTime = new Date(params.year  || this.startTime.getFullYear(), 
+                              params.month || this.startTime.getMonth(), 
+                              params.day   || this.startTime.getDate(), 
+                              0, 0, 0);
+    console.log(params.day);
+    console.log(this.startTime);
+    this.chart.clearChart();
+    this.render();
+};
+
+OCandlestickChart.util = {};
+
+OCandlestickChart.util.getDaysInMonth = function(year, month) {
+    var start = new Date(year, month, 1);
+    var end = new Date(year, parseInt(month, 10) + 1, 1);
+    return (end - start)/(1000 * 60 * 60 * 24);
+};
+
+//List of possible granularity values.
+OCandlestickChart.util.granularities = 
+    ['S5', 'S10', 'S15', 'S30', 'M1', 'M2', 'M3', 'M5', 'M10',
+     'M15', 'M30', 'H1', 'H2', 'H3', 'H4', 'H6', 'H8', 'H12',
+     'D', 'W', 'M'];

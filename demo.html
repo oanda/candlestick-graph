@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <title>Simple rates graph</title>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="https://rawgithub.com/mrpoulin/oandajs/update/oanda.js"></script>
+        <script src="https://www.google.com/jsapi"></script>
+        <script src="./candlestickChart.js"></script>
+
+        <script>
+
+            google.load("visualization", "1", {packages:["corechart"]});
+
+            $('document').ready( function() {
+
+                var now = new Date();
+                var chart = new OCandlestickChart('EUR_USD', 'M30', now, document.getElementById('chart'));
+
+                //Will run chart with default values.
+                google.setOnLoadCallback(function() { chart.render() });
+
+                //Populate the granularity select box:
+                for(var i = 0; i < OCandlestickChart.util.granularities.length; i++) {
+                    gran = OCandlestickChart.util.granularities[i];
+                    $('#granularitySelector').append($('<option>', { text : gran, value : gran }))
+                    $('#granularitySelector').val('M30');
+                }
+
+                //Populate the instrument select box:
+                OANDA.rate.instruments(['instrument'], function(response) {
+                    for(var i = 0; i < response.instruments.length; i++) {
+                        var instrument = response.instruments[i].instrument;
+                        $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
+                    }
+                    //Make sure an instrument is set and everything is ready to go:
+                    $('#instrumentSelector').val('EUR_USD');
+                });
+
+                //Populate the year select box:
+                for(var i = now.getFullYear(); i > 2010; i--) {
+                    $('#year').append($('<option>', { value : i, text : i}));
+                }
+                //Default to current year:
+                $('#year').val(now.getFullYear());
+
+                //Populate the month select box:
+                var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 
+                'September', 'October', 'November', 'December'];
+                for(var i = 0; i < months.length; i++)
+                {
+                    $('#month').append($('<option>', {value : i, text : months[i] }));
+                }
+
+                //Default to current month:
+                $('#month').val(now.getMonth());
+
+                //Populate the day select box:
+                var populateDaySelect = function(year, month) {
+                    var date = new Date();
+                    $('#day').empty();
+                    var numDays = 0; 
+                    if($('#month').val() == date.getMonth() && $('#year').val() == date.getFullYear()) {
+                        numDays = date.getDate();
+                    } else {
+                        numDays = OCandlestickChart.util.getDaysInMonth(date.getFullYear(), date.getMonth());
+                    }
+
+                    for(var i = 1; i <= numDays; i++) {
+                        $('#day').append($('<option>', { value : i, text : i}));
+                    }    
+                }
+                populateDaySelect($('#year').val(), $('#month').val());
+                $('#day').val(now.getDate());
+
+                $('#instrumentSelector').change( function() {
+                    chart.setInstrument($('#instrumentSelector').val());
+                });
+
+                $('#granularitySelector').change(function() {
+                    chart.setGranularity($('#granularitySelector').val());
+                });
+
+                $('#year').change(function() {
+                    var newYear = $('#year').val();
+                    populateDaySelect(newYear, $('#month').val());
+                    chart.setStartTime({ 'year' : newYear });
+                    
+                });
+
+                $('#month').change(function() {
+                    var newMonth = $('#month').val();
+                    populateDaySelect($('#year').val(), newMonth);
+                    chart.setStartTime({ 'month' : newMonth });
+                });
+
+                $('#day').change(function() {
+                    var newDay = $('#day').val();
+                    chart.setStartTime({ 'day' : newDay });
+                });
+            });
+        </script>
+
+        <style>
+            #chart {
+                overflow-x:auto;
+                overflow-y:hidden;
+            }
+
+            .dateSelect {
+
+                border: 1px solid black;
+                margin: 4px;
+                padding: 1px;
+                width: 340px;
+
+            }
+            .dateSelect h4 {
+                margin: 0px;
+                padding: 1px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <form>
+            <label for="instrumentSelector">Instrument Selector:</label>
+            <select id="instrumentSelector"></select>
+            <label for="granularitySelector">Granularity Selector:</label>
+            <select id="granularitySelector"></select>
+            <fieldset class="dateSelect">
+                <h4>Start Date:</h4>
+                <label for="year">Year:</label>
+                <select id="year"></select>
+                <label for="month">Month:</label>
+                <select id="month"></select>
+                <label for="day">Day:</label>
+                <select id="day"></select>
+            </fieldset>
+            <div id='chart'>
+            </div>
+        </body>
+
+    </html>
+
