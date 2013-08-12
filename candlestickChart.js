@@ -1,4 +1,4 @@
-//OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandleStickChart.
+//OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandlestickChart.
 function OCandlestickChart(instrument, granularity, startTime, chartElement) {
 
     this.granularity = granularity;
@@ -30,7 +30,8 @@ OCandlestickChart.prototype.render = function() {
             data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
         }
 
-        var options = { 'title' : "Candlesticks", height : 600 };
+        var options = { 'title' : self.instrument + " Candlesticks", height : 700,
+                        'legend' : { 'position' : 'none' } };
         self.chart.draw(data, options);
     });
 };
@@ -58,8 +59,6 @@ OCandlestickChart.prototype.setStartTime = function(params) {
                               params.month || this.startTime.getMonth(), 
                               params.day   || this.startTime.getDate(), 
                               0, 0, 0);
-    console.log(params.day);
-    console.log(this.startTime);
     this.chart.clearChart();
     this.render();
 };
