@@ -30,8 +30,22 @@ OCandlestickChart.prototype.render = function() {
             data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
         }
 
-        var options = { 'title' : self.instrument + " Candlesticks", height : 700,
-                        'legend' : { 'position' : 'none' } };
+        
+        //Adjust columns to stop candlesticks from being cut off:
+        var maxX = data.getColumnRange(0).max;
+        var minX = data.getColumnRange(0).min;
+        var granSeconds = OCandlestickChart.util.granularityMap[self.granularity];
+
+        var options = { 'title'  : self.instrument + " Candlesticks", 
+                        'height' : 700,
+                        'legend' : { 'position' : 'none' },
+                        'hAxis'  : { 'viewWindowMode' : 'explicit',  
+                                     'viewWindow' : 
+                                        { 'max' : new Date(new Date(maxX).getTime() + granSeconds * 1000),
+                                          'min' : new Date(new Date(minX).getTime() - granSeconds * 1000) 
+                                        } 
+                                   }
+        };
         self.chart.draw(data, options);
     });
 };
@@ -71,8 +85,30 @@ OCandlestickChart.util.getDaysInMonth = function(year, month) {
     return (end - start)/(1000 * 60 * 60 * 24);
 };
 
+//Maps granularity values to seconds.
+OCandlestickChart.util.granularityMap = 
+{ 'S5'  : 5, 
+  'S10' : 10, 
+  'S15' : 15, 
+  'S30' : 30, 
+  'M1'  : 60, 
+  'M2'  : 120, 
+  'M3'  : 180,
+  'M5'  : 300, 
+  'M10' : 600,
+  'M15' : 900, 
+  'M30' : 1800, 
+  'H1'  : 3600, 
+  'H2'  : 7200, 
+  'H3'  : 10800, 
+  'H4'  : 14400, 
+  'H6'  : 21600, 
+  'H8'  : 28800,
+  'H12' : 43200,
+  'D'   : 86400, 
+  'W'   : 604800, 
+  'M'   : -1 /*Let user calculate for now.*/
+}
+
 //List of possible granularity values.
-OCandlestickChart.util.granularities = 
-    ['S5', 'S10', 'S15', 'S30', 'M1', 'M2', 'M3', 'M5', 'M10',
-     'M15', 'M30', 'H1', 'H2', 'H3', 'H4', 'H6', 'H8', 'H12',
-     'D', 'W', 'M'];
+OCandlestickChart.util.granularities = Object.keys(OCandlestickChart.util.granularityMap);
