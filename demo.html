@@ -10,12 +10,15 @@
 
         <script>
 
-            google.load("visualization", "1", {packages:["corechart"]});
+            google.load("visualization", "1", {packages:["corechart", "controls"]});
 
             $('document').ready( function() {
 
                 var now = new Date();
-                var chart = new OCandlestickChart('EUR_USD', 'M30', now, document.getElementById('chart'));
+                var todayAtMidnight = new Date();
+                todayAtMidnight.setHours(0,0,0);
+                var chart = new OCandlestickChart('EUR_USD', 'M30', todayAtMidnight, now, document.getElementById('dashboard'), 
+                                document.getElementById('chart'), document.getElementById('control'), {});
 
                 //Will run chart with default values.
                 google.setOnLoadCallback(function() { chart.render() });
@@ -119,6 +122,17 @@
                 margin: 0px;
                 padding: 1px;
             }
+
+            #chart, #control {
+                width : 1000px;
+            }
+            #chart {
+                margin: 20px 0 0 0;
+                height : 300px;
+            }
+            #control {
+                height : 50px;
+            }
         </style>
     </head>
 
@@ -138,7 +152,9 @@
                 <select id="day"></select>
             </fieldset>
         </form>
-        <div id='chart'>
+        <div id='dashboard'>
+            <div id='chart'></div>
+            <div id='control'></div>
         </div>
     </body>
 </html>

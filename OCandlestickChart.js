@@ -1,18 +1,56 @@
 //OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandlestickChart.
-function OCandlestickChart(instrument, granularity, startTime, chartElement) {
+function OCandlestickChart(instrument, granularity, startTime, stopTime, dashElement, chartElement, controlElement, dimensions) {
 
+    //Chart range variables
     this.granularity = granularity;
     this.instrument = instrument;
-    //Force graph to start at midnight for now.
-    startTime.setHours(0,0,0);
     this.startTime = startTime;
-    this.chart = new google.visualization.CandlestickChart(chartElement);
+    this.stopTime = stopTime;
+
+    //Chart controls
+    this.dash = new google.visualization.Dashboard(dashElement);
+
+    dimensions = dimensions || {};
+    dimensions.chart = dimensions.chart || {};
+    dimensions.control = dimensions.control || {};
+
+    this.chartOpts = {
+        'chartArea' :  {'width' : dimensions.chart.width || '80%', 'height' : dimensions.chart.height || '80%' },
+    };    
+
+    this.chart = new google.visualization.ChartWrapper({
+        'chartType' : 'CandlestickChart',
+        'containerId' : chartElement,
+        
+    });
+
+    this.controlOpts = {
+        'filterColumnIndex': 0,
+        'ui': {
+            'chartType': 'LineChart',
+            'chartOptions': {
+                'chartArea': {'width': dimensions.control.width || '80%', 'height' : dimensions.control.height},
+                'hAxis': {'baselineColor': 'none'}
+            },
+            'chartView': {
+                'columns': [0, 4]
+            },
+        }
+    };
+
+    this.control = new google.visualization.ControlWrapper({
+        'controlType' : 'ChartRangeFilter',
+        'containerId' : controlElement,
+    });
+
 }
 
 OCandlestickChart.prototype.render = function() {
 
     var self = this;
-    OANDA.rate.history(this.instrument, { 'start' : this.startTime.toISOString(), candleFormat : 'midpoint', granularity : this.granularity }, function(response) {
+    OANDA.rate.history(this.instrument, { 'start' : this.startTime.toISOString(), 
+                                          'stop'  : this.stopTime.toISOString(),
+                                          candleFormat : 'midpoint', granularity : this.granularity }, function(response) {
         if(response.error) {
             console.log(response.error);
             return;
@@ -29,24 +67,28 @@ OCandlestickChart.prototype.render = function() {
             var candle = response.candles[i];
             data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
         }
-
         
-        //Adjust columns to stop candlesticks from being cut off:
-        var maxX = data.getColumnRange(0).max;
-        var minX = data.getColumnRange(0).min;
-        var granSeconds = OCandlestickChart.util.granularityMap[self.granularity];
-
-        var options = { 'title'  : self.instrument + " Candlesticks", 
-                        'height' : 700,
-                        'legend' : { 'position' : 'none' },
-                        'hAxis'  : { 'viewWindowMode' : 'explicit',  
-                                     'viewWindow' : 
-                                        { 'max' : new Date(new Date(maxX).getTime() + granSeconds * 1000),
-                                          'min' : new Date(new Date(minX).getTime() - granSeconds * 1000) 
-                                        } 
-                                   }
+        //Set up extra chart options.
+        self.chartOpts.title = self.instrument + "Candlesticks";
+        self.chartOpts.legend = { 'position' : 'none' };
+        self.chartOpts.view = {
+            'columns' : [{
+                'calc' : function(dataTable, rowIndex) {
+                    return dataTable.getFormattedValue(rowIndex, 0);
+                },
+                'type' : 'string',
+            }, 1, 2, 3, 4]
         };
-        self.chart.draw(data, options);
+
+        //Set up extra control options:
+        self.controlOpts.ui.minRangeSize = OCandlestickChart.util.granularityMap[self.granularity] * 1000;
+
+        self.chart.setOptions(self.chartOpts);
+        self.control.setOptions(self.controlOpts);
+
+        //Bind everything
+        self.dash.bind(self.control, self.chart);
+        self.dash.draw(data);
     });
 };
 
@@ -54,7 +96,6 @@ OCandlestickChart.prototype.setGranularity = function(granularity) {
 
     //TODO: Validation.
     this.granularity = granularity;
-    this.chart.clearChart();
     this.render();
 };
 
@@ -62,7 +103,6 @@ OCandlestickChart.prototype.setInstrument = function(instrument) {
 
     //TODO: Validation?
     this.instrument = instrument;
-    this.chart.clearChart();
     this.render();
 };
 
@@ -73,7 +113,6 @@ OCandlestickChart.prototype.setStartTime = function(params) {
                               params.month || this.startTime.getMonth(), 
                               params.day   || this.startTime.getDate(), 
                               0, 0, 0);
-    this.chart.clearChart();
     this.render();
 };
 
