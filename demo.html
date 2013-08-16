@@ -14,11 +14,11 @@
 
             $('document').ready( function() {
 
+                //So we don't have to keep making new date objects..
                 var now = new Date();
-                var todayAtMidnight = new Date();
-                todayAtMidnight.setHours(0,0,0);
-                var chart = new OCandlestickChart('EUR_USD', 'M30', todayAtMidnight, now, document.getElementById('dashboard'), 
-                                document.getElementById('chart'), document.getElementById('control'), {});
+
+                var chart = new OCandlestickChart(document.getElementById('dashboard'), 
+                                document.getElementById('chart'), document.getElementById('control'));
 
                 //Will run chart with default values.
                 google.setOnLoadCallback(function() { chart.render() });

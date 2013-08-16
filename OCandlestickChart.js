@@ -1,21 +1,23 @@
 //OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandlestickChart.
-function OCandlestickChart(instrument, granularity, startTime, stopTime, dashElement, chartElement, controlElement, dimensions) {
+function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts, dimensionOpts) {
 
+    //Set up defaults
+    candleOpts = candleOpts || {};
+    dimensionOpts = dimensionOpts || { chart : {}, control : {} };
+
+    var todayAtMidnight = new Date();
+    todayAtMidnight.setHours(0,0,0);
     //Chart range variables
-    this.granularity = granularity;
-    this.instrument = instrument;
-    this.startTime = startTime;
-    this.stopTime = stopTime;
+    this.granularity = candleOpts.granularity || 'M30';
+    this.instrument = candleOpts.instrument || 'EUR_USD';
+    this.startTime = candleOpts.startTime || todayAtMidnight;
+    this.stopTime = candleOpts.stopTime || new Date();
 
     //Chart controls
     this.dash = new google.visualization.Dashboard(dashElement);
 
-    dimensions = dimensions || {};
-    dimensions.chart = dimensions.chart || {};
-    dimensions.control = dimensions.control || {};
-
     this.chartOpts = {
-        'chartArea' :  {'width' : dimensions.chart.width || '80%', 'height' : dimensions.chart.height || '80%' },
+        'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
     };    
 
     this.chart = new google.visualization.ChartWrapper({
@@ -29,7 +31,7 @@ function OCandlestickChart(instrument, granularity, startTime, stopTime, dashEle
         'ui': {
             'chartType': 'LineChart',
             'chartOptions': {
-                'chartArea': {'width': dimensions.control.width || '80%', 'height' : dimensions.control.height},
+                'chartArea': {'width': dimensionOpts.control.width || '80%', 'height' : dimensionOpts.control.height},
                 'hAxis': {'baselineColor': 'none'}
             },
             'chartView': {
@@ -43,6 +45,8 @@ function OCandlestickChart(instrument, granularity, startTime, stopTime, dashEle
         'containerId' : controlElement,
     });
 
+    this.dash.bind(this.control, this.chart);
+
 }
 
 OCandlestickChart.prototype.render = function() {
@@ -50,7 +54,7 @@ OCandlestickChart.prototype.render = function() {
     var self = this;
     OANDA.rate.history(this.instrument, { 'start' : this.startTime.toISOString(), 
                                           'stop'  : this.stopTime.toISOString(),
-                                          candleFormat : 'midpoint', granularity : this.granularity }, function(response) {
+                                          'candleFormat' : 'midpoint', 'granularity' : this.granularity }, function(response) {
         if(response.error) {
             console.log(response.error);
             return;
@@ -62,14 +66,15 @@ OCandlestickChart.prototype.render = function() {
         data.addColumn('number', 'closeMid');
         data.addColumn('number', 'openMid');
         data.addColumn('number', 'highMid');
+        
 
         for(var i = 0 ; i < response.candles.length; i++) {
             var candle = response.candles[i];
-            data.addRows([[new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]]);
+            data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
         }
         
         //Set up extra chart options.
-        self.chartOpts.title = self.instrument + "Candlesticks";
+        self.chartOpts.title = self.instrument + " Candlesticks";
         self.chartOpts.legend = { 'position' : 'none' };
         self.chartOpts.view = {
             'columns' : [{
@@ -79,23 +84,32 @@ OCandlestickChart.prototype.render = function() {
                 'type' : 'string',
             }, 1, 2, 3, 4]
         };
-
         //Set up extra control options:
         self.controlOpts.ui.minRangeSize = OCandlestickChart.util.granularityMap[self.granularity] * 1000;
+        //Reset the state of the control so the sliders stay in bounds.
+        self.control.setState({ 'start' : data.getColumnRange(0).min, 'end' :  data.getColumnRange(0).max});
 
         self.chart.setOptions(self.chartOpts);
         self.control.setOptions(self.controlOpts);
+        
 
-        //Bind everything
-        self.dash.bind(self.control, self.chart);
         self.dash.draw(data);
     });
+};
+
+OCandlestickChart.prototype.reset = function() {
+
+    var controlHandle = this.control.getControl();
+    var chartHandle = this.chart.getChart();
+    controlHandle.resetControl();
+    chartHandle.clearChart();
 };
 
 OCandlestickChart.prototype.setGranularity = function(granularity) {
 
     //TODO: Validation.
     this.granularity = granularity;
+    this.reset();
     this.render();
 };
 
@@ -103,6 +117,7 @@ OCandlestickChart.prototype.setInstrument = function(instrument) {
 
     //TODO: Validation?
     this.instrument = instrument;
+    this.reset();
     this.render();
 };
 
@@ -113,6 +128,7 @@ OCandlestickChart.prototype.setStartTime = function(params) {
                               params.month || this.startTime.getMonth(), 
                               params.day   || this.startTime.getDate(), 
                               0, 0, 0);
+    this.reset();
     this.render();
 };
 
@@ -147,7 +163,7 @@ OCandlestickChart.util.granularityMap =
   'D'   : 86400, 
   'W'   : 604800, 
   'M'   : -1 /*Let user calculate for now.*/
-}
+};
 
 //List of possible granularity values.
 OCandlestickChart.util.granularities = Object.keys(OCandlestickChart.util.granularityMap);
