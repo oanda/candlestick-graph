@@ -24,7 +24,6 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.chart = new google.visualization.ChartWrapper({
         'chartType' : 'CandlestickChart',
         'containerId' : chartElement,
-        
     });
 
     this.controlOpts = {
@@ -47,6 +46,41 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     });
 
     this.dash.bind(this.control, this.chart);
+
+    //Set up the granularity table as 'private' variable:
+    var grans = { 
+        'S5'  : 5, 
+        'S10' : 10, 
+        'S15' : 15, 
+        'S30' : 30, 
+        'M1'  : 60, 
+        'M2'  : 120, 
+        'M3'  : 180,
+        'M5'  : 300, 
+        'M10' : 600,
+        'M15' : 900, 
+        'M30' : 1800, 
+        'H1'  : 3600, 
+        'H2'  : 7200, 
+        'H3'  : 10800, 
+        'H4'  : 14400, 
+        'H6'  : 21600, 
+        'H8'  : 28800,
+        'H12' : 43200,
+        'D'   : 86400, 
+        'W'   : 604800,
+        'M'   : -1,
+    };
+
+    //The 'this' qualified methods are accessible to class instances
+    this.granularityMap = function(year, month) {
+        var daysInMonth = OCandlestickChart.util.getDaysInMonth(year, month);
+        grans['M'] = daysInMonth * 24 * 60 * 60;
+        return grans;
+    };
+
+    this.granularities = Object.keys(grans);
+   
 
 }
 
@@ -77,24 +111,14 @@ OCandlestickChart.prototype.render = function() {
         //Set up extra chart options.
         self.chartOpts.title = self.instrument + " Candlesticks";
         self.chartOpts.legend = { 'position' : 'none' };
-        self.chartOpts.view = {
-            'columns' : [{
-                'calc' : function(dataTable, rowIndex) {
-                    return dataTable.getFormattedValue(rowIndex, 0);
-                },
-                'type' : 'string'
-            }, 1, 2, 3, 4]
-        };
         //Set up extra control options:
-        console.log(OCandlestickChart.util.granularityMap[self.granularity] * 1000);
-        self.controlOpts.ui.minRangeSize = OCandlestickChart.util.granularityMap[self.granularity] * 1000;
+        self.controlOpts.ui.minRangeSize = self.granularityMap(self.startTime.getFullYear(), self.startTime.getMonth())[self.granularity] * 1000 * 2;
         //Reset the state of the control so the sliders stay in bounds.
         self.control.setState({ 'start' : data.getColumnRange(0).min, 'end' :  data.getColumnRange(0).max});
 
         self.chart.setOptions(self.chartOpts);
         self.control.setOptions(self.controlOpts);
         
-
         self.dash.draw(data);
     });
 };
@@ -146,38 +170,10 @@ OCandlestickChart.prototype.setEndTime = function(params) {
                             params.seconds || 0);
 };
 
-OCandlestickChart.util = {};
-
-OCandlestickChart.util.getDaysInMonth = function(year, month) {
-    var start = new Date(year, month, 1);
-    var end = new Date(year, parseInt(month, 10) + 1, 1);
-    return (end - start)/(1000 * 60 * 60 * 24);
+OCandlestickChart.util = {
+    'getDaysInMonth' : function(year, month) {
+        var start = new Date(year, month, 1);
+        var end = new Date(year, parseInt(month, 10) + 1, 1);
+        return (end - start)/(1000 * 60 * 60 * 24);
+    }
 };
-
-//Maps granularity values to seconds.
-OCandlestickChart.util.granularityMap = 
-{ 'S5'  : 5, 
-  'S10' : 10, 
-  'S15' : 15, 
-  'S30' : 30, 
-  'M1'  : 60, 
-  'M2'  : 120, 
-  'M3'  : 180,
-  'M5'  : 300, 
-  'M10' : 600,
-  'M15' : 900, 
-  'M30' : 1800, 
-  'H1'  : 3600, 
-  'H2'  : 7200, 
-  'H3'  : 10800, 
-  'H4'  : 14400, 
-  'H6'  : 21600, 
-  'H8'  : 28800,
-  'H12' : 43200,
-  'D'   : 86400, 
-  'W'   : 604800, 
-  'M'   : -1 /*Let user calculate for now.*/
-};
-
-//List of possible granularity values.
-OCandlestickChart.util.granularities = Object.keys(OCandlestickChart.util.granularityMap);

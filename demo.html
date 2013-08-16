@@ -24,8 +24,8 @@
                 google.setOnLoadCallback(function() { chart.render() });
 
                 //Populate the granularity select box:
-                for(var i = 0; i < OCandlestickChart.util.granularities.length; i++) {
-                    gran = OCandlestickChart.util.granularities[i];
+                for(var i = 0; i < chart.granularities.length; i++) {
+                    gran = chart.granularities[i];
                     $('#granularitySelector').append($('<option>', { text : gran, value : gran }))
                     $('#granularitySelector').val('M30');
                 }
