@@ -18,6 +18,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
 
     this.chartOpts = {
         'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
+        'hAxis' : { 'slantedText' : false },
     };    
 
     this.chart = new google.visualization.ChartWrapper({
@@ -35,7 +36,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
                 'hAxis': {'baselineColor': 'none'}
             },
             'chartView': {
-                'columns': [0, 4]
+                'columns': [0, 3]
             },
         }
     };
@@ -81,10 +82,11 @@ OCandlestickChart.prototype.render = function() {
                 'calc' : function(dataTable, rowIndex) {
                     return dataTable.getFormattedValue(rowIndex, 0);
                 },
-                'type' : 'string',
+                'type' : 'string'
             }, 1, 2, 3, 4]
         };
         //Set up extra control options:
+        console.log(OCandlestickChart.util.granularityMap[self.granularity] * 1000);
         self.controlOpts.ui.minRangeSize = OCandlestickChart.util.granularityMap[self.granularity] * 1000;
         //Reset the state of the control so the sliders stay in bounds.
         self.control.setState({ 'start' : data.getColumnRange(0).min, 'end' :  data.getColumnRange(0).max});
@@ -124,12 +126,24 @@ OCandlestickChart.prototype.setInstrument = function(instrument) {
 OCandlestickChart.prototype.setStartTime = function(params) {
     
     //TODO:Validation.
-    this.startTime = new Date(params.year  || this.startTime.getFullYear(), 
-                              params.month || this.startTime.getMonth(), 
-                              params.day   || this.startTime.getDate(), 
-                              0, 0, 0);
+    this.startTime = new Date(params.year    || this.startTime.getFullYear(), 
+                              params.month   || this.startTime.getMonth(), 
+                              params.day     || this.startTime.getDate(), 
+                              params.hours   || 0,
+                              params.minutes || 0, 
+                              params.seconds || 0);
     this.reset();
     this.render();
+};
+
+OCandlestickChart.prototype.setEndTime = function(params) {
+
+    this.endTime = new Date(params.year    || this.endTime.getFullYear(),
+                            params.month   || this.endtime.getMonth(),
+                            params.day     || this.startTime.getDate(),
+                            params.hours   || 0, 
+                            params.minutes || 0, 
+                            params.seconds || 0);
 };
 
 OCandlestickChart.util = {};
