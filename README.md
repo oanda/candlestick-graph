@@ -104,5 +104,7 @@ Currently, the OCandlestickChart class allows you to change the granularity, sta
 **Note:** No error checking is done on any of the values passed to these functions.
 
 ##Known Issues
-* Dragging sliders too close together causes the x-axis to change to a 10 year scale.
 * Candlesticks are cut off at the edges of the graph.
+FIX: Load version 1.1 (unstable) of the visualization library.
+
+* Dragging sliders too close together causes the x-axis to change to a 10 year scale.
