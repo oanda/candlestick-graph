@@ -99,6 +99,7 @@ Currently, the OCandlestickChart class allows you to change the granularity, sta
 |-----------|------|
 |setGranularity|Changes the granularity of candle's for given instrument from given start and end times.|
 |setStartTime|Gets candles from the given start time|
+|setEndTime|Gets candles to the given end time|
 |setInstrument|Get candles for the given instrument|
 
 **Note:** No error checking is done on any of the values passed to these functions.

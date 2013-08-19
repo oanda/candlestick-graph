@@ -11,7 +11,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.granularity = candleOpts.granularity || 'M30';
     this.instrument = candleOpts.instrument || 'EUR_USD';
     this.startTime = candleOpts.startTime || todayAtMidnight;
-    this.stopTime = candleOpts.stopTime || new Date();
+    this.endTime = candleOpts.stopTime || new Date();
 
     //Chart controls
     this.dash = new google.visualization.Dashboard(dashElement);
@@ -80,47 +80,64 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     };
 
     this.granularities = Object.keys(grans);
-   
-
 }
 
 OCandlestickChart.prototype.render = function() {
 
+    //Calculate set of intervals to get all candles in the specified range with the specified granularity.
+    var granSecs = this.granularityMap(this.startTime.getFullYear(), this.startTime.getMonth())[this.granularity] * 1000;
+    var intervals = [this.startTime];
+
+    var dateIter = this.startTime;
+    while((this.endTime - dateIter) > granSecs * 5000) {
+        dateIter = new Date(dateIter.getTime() + granSecs * 5000);
+        intervals.push(dateIter);
+    }
+    intervals.push(this.endTime);
+
+    var data = new google.visualization.DataTable();
+    data.addColumn('datetime', 'Time');
+    data.addColumn('number', 'lowMid');
+    data.addColumn('number', 'closeMid');
+    data.addColumn('number', 'openMid');
+    data.addColumn('number', 'highMid');
+        
     var self = this;
-    OANDA.rate.history(this.instrument, { 'start' : this.startTime.toISOString(), 
-                                          'stop'  : this.stopTime.toISOString(),
-                                          'candleFormat' : 'midpoint', 'granularity' : this.granularity }, function(response) {
-        if(response.error) {
-            console.log(response.error);
+    function getData(i) {
+        if(i+1 < intervals.length) {
+            OANDA.rate.history(self.instrument, { 'start' : intervals[i].toISOString(),
+                                                  'end'   : intervals[i+1].toISOString(),
+                                                  'candleFormat' : 'midpoint', 'granularity' : self.granularity }, function(response) {
+                if(response.error) {
+                    console.log(response.error);
+                    return;
+                }
+
+                for(var j = 0 ; j < response.candles.length; j++) {
+                    var candle = response.candles[j];
+                    data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
+                }
+                getData(i+1);
+            });
+
+        } else {
+            //Set up extra chart options.
+            self.chartOpts.title = self.instrument + " Candlesticks";
+            self.chartOpts.legend = { 'position' : 'none' };
+            //Set up extra control options:
+            self.controlOpts.ui.minRangeSize = self.granularityMap(self.startTime.getFullYear(), self.startTime.getMonth())[self.granularity] * 1000 * 2;
+            //Reset the state of the control so the sliders stay in bounds.
+            self.control.setState({ 'start' : data.getColumnRange(0).min, 'end' :  data.getColumnRange(0).max});
+
+            self.chart.setOptions(self.chartOpts);
+            self.control.setOptions(self.controlOpts);
+            
+            self.dash.draw(data);
             return;
         }
 
-        var data = new google.visualization.DataTable();
-        data.addColumn('datetime', 'Time');
-        data.addColumn('number', 'lowMid');
-        data.addColumn('number', 'closeMid');
-        data.addColumn('number', 'openMid');
-        data.addColumn('number', 'highMid');
-        
-
-        for(var i = 0 ; i < response.candles.length; i++) {
-            var candle = response.candles[i];
-            data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
-        }
-        
-        //Set up extra chart options.
-        self.chartOpts.title = self.instrument + " Candlesticks";
-        self.chartOpts.legend = { 'position' : 'none' };
-        //Set up extra control options:
-        self.controlOpts.ui.minRangeSize = self.granularityMap(self.startTime.getFullYear(), self.startTime.getMonth())[self.granularity] * 1000 * 2;
-        //Reset the state of the control so the sliders stay in bounds.
-        self.control.setState({ 'start' : data.getColumnRange(0).min, 'end' :  data.getColumnRange(0).max});
-
-        self.chart.setOptions(self.chartOpts);
-        self.control.setOptions(self.controlOpts);
-        
-        self.dash.draw(data);
-    });
+    }
+    getData(0);
 };
 
 OCandlestickChart.prototype.reset = function() {
@@ -163,11 +180,13 @@ OCandlestickChart.prototype.setStartTime = function(params) {
 OCandlestickChart.prototype.setEndTime = function(params) {
 
     this.endTime = new Date(params.year    || this.endTime.getFullYear(),
-                            params.month   || this.endtime.getMonth(),
-                            params.day     || this.startTime.getDate(),
-                            params.hours   || 0, 
-                            params.minutes || 0, 
-                            params.seconds || 0);
+                             params.month   || this.endTime.getMonth(),
+                             params.day     || this.endTime.getDate(),
+                             params.hours   || 0, 
+                             params.minutes || 0, 
+                             params.seconds || 0);
+    this.reset();
+    this.render();
 };
 
 OCandlestickChart.util = {

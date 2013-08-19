@@ -10,6 +10,7 @@
 
         <script>
 
+            OANDA.baseURL = "http://max:1343";
             google.load("visualization", "1.1", {packages:["corechart", "controls"]});
 
             $('document').ready( function() {
@@ -42,39 +43,48 @@
 
                 //Populate the year select box:
                 for(var i = now.getFullYear(); i > 2010; i--) {
-                    $('#year').append($('<option>', { value : i, text : i}));
+                    $('#startDate .year').append($('<option>', { value : i, text : i}));
+		            $('#stopDate .year').append($('<option>', { value : i, text : i}));
                 }
                 //Default to current year:
-                $('#year').val(now.getFullYear());
+                $('#startDate .year').val(now.getFullYear());
+                $('#stopDate .year').val(now.getFullYear());
 
                 //Populate the month select box:
                 var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 
                 'September', 'October', 'November', 'December'];
                 for(var i = 0; i < months.length; i++)
                 {
-                    $('#month').append($('<option>', {value : i, text : months[i] }));
+                    $('#startDate .month').append($('<option>', {value : i, text : months[i] }));
+                    $('#stopDate .month').append($('<option>', {value : i, text : months[i] }));
                 }
 
                 //Default to current month:
-                $('#month').val(now.getMonth());
+                $('#startDate .month').val(now.getMonth());
+                $('#stopDate .month').val(now.getMonth());
 
                 //Populate the day select box:
-                var populateDaySelect = function(year, month) {
+                var populateDaySelect = function($selectBox) {
                     var date = new Date();
-                    $('#day').empty();
+                    var selectedYear = $selectBox.children('.year').val();
+                    var selectedMonth = $selectBox.children('.month').val();
+                    $selectBox.children('.day').empty();
+
                     var numDays = 0; 
-                    if($('#month').val() == date.getMonth() && $('#year').val() == date.getFullYear()) {
+                    if(selectedMonth == date.getMonth() && selectedYear == date.getFullYear()) {
                         numDays = date.getDate();
                     } else {
-                        numDays = OCandlestickChart.util.getDaysInMonth(date.getFullYear(), date.getMonth());
+                        numDays = OCandlestickChart.util.getDaysInMonth(selectedYear, selectedMonth);
                     }
 
                     for(var i = 1; i <= numDays; i++) {
-                        $('#day').append($('<option>', { value : i, text : i}));
+                        $selectBox.children('.day').append($('<option>', { value : i, text : i}));
                     }    
                 }
-                populateDaySelect($('#year').val(), $('#month').val());
-                $('#day').val(now.getDate());
+                populateDaySelect($('#startDate'));
+                populateDaySelect($('#stopDate'));
+                $('#startDate .day').val(now.getDate());
+                $('#stopDate .day').val(now.getDate());
 
                 $('#instrumentSelector').change( function() {
                     chart.setInstrument($('#instrumentSelector').val());
@@ -84,22 +94,39 @@
                     chart.setGranularity($('#granularitySelector').val());
                 });
 
-                $('#year').change(function() {
-                    var newYear = $('#year').val();
-                    populateDaySelect(newYear, $('#month').val());
+                $('#startDate .year').change(function() {
+                    var newYear = $('#startDate .year').val();
+                    populateDaySelect($('#startDate'));
                     chart.setStartTime({ 'year' : newYear });
                     
                 });
 
-                $('#month').change(function() {
-                    var newMonth = $('#month').val();
-                    populateDaySelect($('#year').val(), newMonth);
+                $('#startDate .month').change(function() {
+                    var newMonth = $('#startDate .month').val();
+                    populateDaySelect($('#startDate'));
                     chart.setStartTime({ 'month' : newMonth });
                 });
 
-                $('#day').change(function() {
-                    var newDay = $('#day').val();
+                $('#startDate .day').change(function() {
+                    var newDay = $('#startDate .day').val();
                     chart.setStartTime({ 'day' : newDay });
+                });
+
+ 		        $('#stopDate .year').change(function() {
+                    var newYear = $('#stopDate .year').val();
+                    populateDaySelect($('#stopDate'));
+                    chart.setEndTime({ 'year' : newYear });
+                });
+
+                $('#stopDate .month').change(function() {
+                    var newMonth = $('#stopDate .month').val();
+                    populateDaySelect($('#stopDate'));
+                    chart.setEndTime({ 'month' : newMonth });
+                });
+
+                $('#stopDate .day').change(function() {
+                    var newDay = $('#stopDate .day').val();
+                    chart.setEndTime({ 'day' : newDay });
                 });
             });
         </script>
@@ -142,14 +169,23 @@
             <select id="instrumentSelector"></select>
             <label for="granularitySelector">Granularity Selector:</label>
             <select id="granularitySelector"></select>
-            <fieldset class="dateSelect">
+            <fieldset class="dateSelect" id="startDate">
                 <h4>Start Date:</h4>
-                <label for="year">Year:</label>
-                <select id="year"></select>
-                <label for="month">Month:</label>
-                <select id="month"></select>
-                <label for="day">Day:</label>
-                <select id="day"></select>
+                <label>Year:</label>
+                <select class="year"></select>
+                <label>Month:</label>
+                <select class="month"></select>
+                <label>Day:</label>
+                <select class="day"></select>
+            </fieldset>
+	    <fieldset class="dateSelect" id="stopDate">
+                <h4>Stop Date:</h4>
+                <label>Year:</label>
+                <select class="year"></select>
+                <label>Month:</label>
+                <select class="month"></select>
+                <label>Day:</label>
+                <select class="day"></select>
             </fieldset>
         </form>
         <div id='dashboard'>
