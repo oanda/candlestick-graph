@@ -27,7 +27,7 @@
                 //Populate the granularity select box:
                 for(var i = 0; i < chart.granularities.length; i++) {
                     gran = chart.granularities[i];
-                    $('#granularitySelector').append($('<option>', { text : gran, value : gran }))
+                    $('#granularitySelector').append($('<option>', { text : gran, value : gran }));
                     $('#granularitySelector').val('M30');
                 }
 
@@ -128,6 +128,16 @@
                     var newDay = $('#stopDate .day').val();
                     chart.setEndTime({ 'day' : newDay });
                 });
+
+                $('#streamingCheckbox').click( function() {
+
+                    if(this.checked) {
+                        chart.toggleStreaming(true);
+                    } else {
+                        chart.toggleStreaming(false);
+
+                    }
+                });
             });
         </script>
 
@@ -169,6 +179,7 @@
             <select id="instrumentSelector"></select>
             <label for="granularitySelector">Granularity Selector:</label>
             <select id="granularitySelector"></select>
+            <input type="checkbox" name="streaming" value="StreamingEnabled" id="streamingCheckbox">Streaming</input>
             <fieldset class="dateSelect" id="startDate">
                 <h4>Start Date:</h4>
                 <label>Year:</label>
