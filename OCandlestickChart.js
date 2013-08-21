@@ -151,6 +151,9 @@ OCandlestickChart.prototype.render = function() {
             return new Date();
         }
 
+        //Do one render to push out any candles that are sitting in the table:
+        onComplete(data);
+
         //start time will be set to the last candle, end time will be set to current time rounded to match granularity.
         var interval = { 'start' : new Date(data.getValue(data.getNumberOfRows() - 1, 0)), 'end' : new Date((Math.round(now().getTime() / granSecs) * granSecs) + 1000) };
         console.log("Last candle: " + interval.start);
@@ -205,7 +208,6 @@ OCandlestickChart.prototype.render = function() {
      */
     if(this.streamingEnabled) {
         //update endtime to now.
-        this.endTime = new Date();
         queryFixed( function(data) { queryLoop(data, draw); });
     } else {
         queryFixed(draw);
