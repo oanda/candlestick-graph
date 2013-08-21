@@ -3,6 +3,9 @@ Simple-Rates-Graph
 
 A small library for displaying OANDA's rate history data in a candlestick chart with a line chart control that allows filtering the candlesticks.
 
+##Browser Compatibility
+This library has only been testing in Google Chrome v28.
+
 ##Setup
 
 ###JavaScript Dependencies
@@ -106,6 +109,9 @@ Currently, the OCandlestickChart class allows you to change the granularity, sta
 
 **Note:** No error checking is done on any of the values passed to these functions.
 
+###Enabling Streaming
+To have the chart update automatically with the latest candlesticks, the `streamingEnabled` flag can be set to true.
+
 ##Utility Functions
 
 Utility functions can be accessed through `OCandlestickChart.util`.
@@ -113,9 +119,6 @@ Utility functions can be accessed through `OCandlestickChart.util`.
 |Method Name|Description|
 |-----------|-----------|
 |`getDaysInMonth(year, month)`|Takes a year and zero indexed month and returns the number of days in that month for the given year.|
-
-###Enabling Streaming
-To have the chart update automatically with the latest candlesticks, the `streamingEnabled` flag can be set to true.
 
 ##Known Issues
 * Candlesticks are cut off at the edges of the graph.
