@@ -24,15 +24,17 @@ Google requires that it's API be initialized before using any functions. You mus
 
 ```HTML
 <script>
-    google.load("visualization", "1", {packages:["corechart, controls"]});
+    google.load("visualization", "1.1", {packages:["corechart, controls"]});
 </script>
 ```
+
+**Note:** The unstable version (1.1) of both modules is required to stop candlesticks from being cut off at the edges of the graph.
 
 You can also configure oandajs to add a auth token or change the API endpoint URL:
 
 ```HTML
 <script>
-    OANDA.baseURL = "http://oanda-test.apigee.net"
+    OANDA.baseURL = "http://api-sandbox.oanda.com"
 </script>
 ```
 
@@ -104,8 +106,27 @@ Currently, the OCandlestickChart class allows you to change the granularity, sta
 
 **Note:** No error checking is done on any of the values passed to these functions.
 
+##Utility Functions
+
+Utility functions can be accessed through `OCandlestickChart.util`.
+
+|Method Name|Description|
+|-----------|-----------|
+|`getDaysInMonth(year, month)`|Takes a year and zero indexed month and returns the number of days in that month for the given year.|
+
 ##Known Issues
 * Candlesticks are cut off at the edges of the graph.
 FIX: Load version 1.1 (unstable) of the visualization library.
 
-* Dragging sliders too close together causes the x-axis to change to a 10 year scale.
+* Dragging sliders too close together sometimes causes the x-axis to change to a 10 year scale.
+
+##License
+The MIT License (MIT)
+
+Copyright (c) 2013 OANDA Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
