@@ -88,7 +88,6 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
 
 OCandlestickChart.prototype.render = function() {
 
-
     var granSecs = this.granularityMap(this.startTime.getFullYear(), this.startTime.getMonth())[this.granularity] * 1000;
 
     var data = new google.visualization.DataTable();
@@ -177,11 +176,15 @@ OCandlestickChart.prototype.render = function() {
                     console.log('Setting new start time: ' + interval.start);
                     interval.end = new Date(interval.start.getTime() + granSecs * timeMultiplier + 1000);
                     console.log('Setting new end time: ' + interval.end);
-                    onComplete(data);
+                    //Set this so when user turns off streaming they stil get candlesticks up to current time.
+                    this.stopTime = interval.end;
+                    if(timeMultiplier === 1) {
+                        onComplete(data);
+                    }
                 });
         };
 
-        self.callbackId = setInterval(poll, granSecs);
+        self.callbackId = setInterval(poll, granSecs / 2);
     }
 
     /*
