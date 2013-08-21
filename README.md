@@ -114,6 +114,9 @@ Utility functions can be accessed through `OCandlestickChart.util`.
 |-----------|-----------|
 |`getDaysInMonth(year, month)`|Takes a year and zero indexed month and returns the number of days in that month for the given year.|
 
+###Enabling Streaming
+To have the chart update automatically with the latest candlesticks, the `streamingEnabled` flag can be set to true.
+
 ##Known Issues
 * Candlesticks are cut off at the edges of the graph.
 FIX: Load version 1.1 (unstable) of the visualization library.

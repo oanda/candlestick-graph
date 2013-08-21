@@ -6,7 +6,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     dimensionOpts = dimensionOpts || { chart : {}, control : {} };
 
     var todayAtMidnight = new Date();
-    todayAtMidnight.setHours(0,0,0);
+    todayAtMidnight.setHours(9,38,0);
     //Chart range variables
     this.granularity = candleOpts.granularity || 'M30';
     this.instrument = candleOpts.instrument || 'EUR_USD';
@@ -14,7 +14,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.endTime = candleOpts.endTime || new Date();
 
     this.streamingEnabled = candleOpts.streamingEnabled || false;
-    this.registeredCallbacks = new Array();
+    this.callbackId = 0;
 
     //Chart controls
     this.dash = new google.visualization.Dashboard(dashElement);
@@ -22,6 +22,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.chartOpts = {
         'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
         'hAxis' : { 'slantedText' : false },
+        'animation' : { 'duarion' : 100, 'easing' : 'in'}
     };    
 
     this.chart = new google.visualization.ChartWrapper({
@@ -99,10 +100,12 @@ OCandlestickChart.prototype.render = function() {
 
     var self = this;
     
-    /* Create and draw data table with candles from the specified start and end time class variables.
+    /* Queries the API for a fixed amount of candles, calls the onComplete method with the completed data set.
      */
-    function renderOnce() {
+    function queryFixed(onComplete) {
 
+        //Since candles can only be returned in groups of 5000 and users may request time intervals where more than
+        //5000 candles can exist, we must break the time interval into 5000 candles chunks.
         var intervals = [self.startTime];
         var dateIter = self.startTime;
         while((self.endTime - dateIter) > granSecs * 5000) {
@@ -111,6 +114,7 @@ OCandlestickChart.prototype.render = function() {
         }
         intervals.push(self.endTime);
        
+        //Recursive function to get candles in all intervals.
         function getData(i) {
             if(i+1 < intervals.length) {
                 OANDA.rate.history(self.instrument, { 'start' : intervals[i].toISOString(),
@@ -128,7 +132,7 @@ OCandlestickChart.prototype.render = function() {
                     getData(i+1);
                 });
             } else {
-                draw(data);
+                onComplete(data);
                 return;
             }
         }
@@ -138,34 +142,63 @@ OCandlestickChart.prototype.render = function() {
 
     /*
      * Create and draw a data table with candles starting from the given start time, up to the current time, adding
-     * new candles as they become available.
+     * new candles as they become available. Automatically re-draws the graph as candles are provided.
      */
-    function renderLoop() {
+    function queryLoop(data, onComplete) {
 
-        var loops = 0;
+        function now() {
+            return new Date();
+        }
 
+        //start time will be set to the last candle, end time will be set to current time rounded to match granularity.
+        var interval = { 'start' : new Date(data.getValue(data.getNumberOfRows() - 1, 0)), 'end' : new Date((Math.round(now().getTime() / granSecs) * granSecs) + 1000) };
+        console.log("Last candle: " + interval.start);
+        console.log("Next candle: " + interval.end);
+
+        //Get the difference between the time of the last candle and our current time:
+        var timeMultiplier = 0;
         var poll = function() {
-            console.log("polled " + loops + " times.");
-            loops++;
-            self.registeredCallbacks.push(setTimeout(poll, granSecs));
+            console.log("Polled at: " + now());
+            OANDA.rate.history(self.instrument, {'start' : interval.start.toISOString(), 'end' : interval.end.toISOString(),
+                'candleFormat' : 'midpoint', 'granularity' : self.granularity, 'includeFirst' : true}, 
+                function(response) {
+
+                    for(var j = 0 ; j < response.candles.length; j++) {
+                        var candle = response.candles[j];
+                        //Avoid re-adding partial candles.
+                        if(interval.start < new Date(candle.time).getTime()) {
+                            data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
+                            timeMultiplier = 0;
+                        }
+                    }
+
+                    timeMultiplier++;
+
+                    interval.start = data.getValue(data.getNumberOfRows() - 1, 0);
+                    console.log('Setting new start time: ' + interval.start);
+                    interval.end = new Date(interval.start.getTime() + granSecs * timeMultiplier + 1000);
+                    console.log('Setting new end time: ' + interval.end);
+                    onComplete(data);
+                });
         };
 
-        self.registeredCallbacks.push(setTimeout(poll, granSecs));
+        self.callbackId = setInterval(poll, granSecs);
     }
 
     /*
      * If no data table is provided, create one using the above method.
      */
-    if(!this.streamingEnabled) {
-        renderOnce();
+    if(this.streamingEnabled) {
+        queryFixed( function(data) { queryLoop(data, draw); });
     } else {
-        renderLoop();
+        queryFixed(draw);
     }
 
     /*
      * Render the data to a chart.
      */
     function draw(data) {
+        console.log("Draw started.");
         //Set up extra chart options.
         self.chartOpts.title = self.instrument + " Candlesticks";
         self.chartOpts.legend = { 'position' : 'none' };
@@ -176,7 +209,6 @@ OCandlestickChart.prototype.render = function() {
 
         self.chart.setOptions(self.chartOpts);
         self.control.setOptions(self.controlOpts);
-        
         self.dash.draw(data);
     }
 };
@@ -188,10 +220,8 @@ OCandlestickChart.prototype.reset = function() {
     controlHandle.resetControl();
     chartHandle.clearChart();
     
-    //Clear all callback methods:
-    for(var i = 0; i < this.registeredCallbacks.length; i++) {
-        clearTimeout(this.registeredCallbacks[i]);
-    }
+    //Stop setInterval from executing.
+    clearInterval(this.callbackId);
 };
 
 OCandlestickChart.prototype.setGranularity = function(granularity) {
