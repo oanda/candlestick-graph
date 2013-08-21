@@ -129,6 +129,33 @@
                     chart.setEndTime({ 'day' : newDay });
                 });
 
+                //Populate hours/minutes/seconds:
+                for(var i = 0; i < 24; i++) {
+                    $('.hours').append($('<option>', {value : i, text : i }));
+                }
+
+                for (var i = 1; i <= 60; i++) {
+                    $('.minutes').append($('<option>', {value : i, text: i}));
+                    $('.seconds').append($('<option>', {value : i, text: i}));
+                }
+
+                $('#startDate .hours').change( function() {
+                    var newHour = $('#startDate .hours').val();
+                    chart.setStartTime({'hours' : newHour});
+                });
+
+                $('#startDate .minutes').change( function() {
+                    var newMinutes = $('#startDate .minutes').val();
+                    chart.setStartTime({'minutes' : newMinutes});
+                });
+
+
+                $('#startDate .seconds').change( function() {
+                    var newSeconds = $('#startDate .minutes').val();
+                    chart.setStartTime({'seconds' : newSeconds});
+                });
+
+
                 $('#streamingCheckbox').click( function() {
 
                     if(this.checked) {
@@ -188,6 +215,12 @@
                 <select class="month"></select>
                 <label>Day:</label>
                 <select class="day"></select>
+                <label>Hours:</label>
+                <select class="hours"></select>
+                <label>Minutes:</label>
+                <select class="minutes"></select>
+                <label>Seconds:</label>
+                <select class="seconds"></select>
             </fieldset>
 	    <fieldset class="dateSelect" id="stopDate">
                 <h4>Stop Date:</h4>

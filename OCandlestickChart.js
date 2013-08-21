@@ -6,7 +6,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     dimensionOpts = dimensionOpts || { chart : {}, control : {} };
 
     var todayAtMidnight = new Date();
-    todayAtMidnight.setHours(9,38,0);
+    todayAtMidnight.setHours(0,0,0);
     //Chart range variables
     this.granularity = candleOpts.granularity || 'M30';
     this.instrument = candleOpts.instrument || 'EUR_USD';
@@ -139,7 +139,6 @@ OCandlestickChart.prototype.render = function() {
         getData(0);
     }
 
-
     /*
      * Create and draw a data table with candles starting from the given start time, up to the current time, adding
      * new candles as they become available. Automatically re-draws the graph as candles are provided.
@@ -246,21 +245,22 @@ OCandlestickChart.prototype.setStartTime = function(params) {
     this.startTime = new Date(params.year    || this.startTime.getFullYear(), 
                               params.month   || this.startTime.getMonth(), 
                               params.day     || this.startTime.getDate(), 
-                              params.hours   || 0,
-                              params.minutes || 0, 
-                              params.seconds || 0);
+                              params.hours   || this.startTime.getHours(),
+                              params.minutes || this.startTime.getMinutes(), 
+                              params.seconds || this.startTime.getSeconds()
+                              );
     this.reset();
     this.render();
 };
 
 OCandlestickChart.prototype.setEndTime = function(params) {
 
-    this.endTime = new Date(params.year    || this.endTime.getFullYear(),
+    this.endTime = new Date( params.year    || this.endTime.getFullYear(),
                              params.month   || this.endTime.getMonth(),
                              params.day     || this.endTime.getDate(),
-                             params.hours   || 0, 
-                             params.minutes || 0, 
-                             params.seconds || 0);
+                             params.hours   || this.endTime.getHours(), 
+                             params.minutes || this.endTime.getMinutes(), 
+                             params.seconds || this.endTime.getSeconds());
     this.reset();
     this.render();
 };
