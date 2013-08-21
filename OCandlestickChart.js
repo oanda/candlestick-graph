@@ -25,7 +25,6 @@ function OCandlestickChart(dashElement, chartElement, controlElement, errorEleme
     this.chartOpts = {
         'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
         'hAxis' : { 'slantedText' : false },
-        'animation' : { 'duration' : 100, 'easing' : 'out'}
     };    
 
     this.chart = new google.visualization.ChartWrapper({
@@ -145,17 +144,19 @@ OCandlestickChart.prototype.render = function() {
      * Create and draw a data table with candles starting from the given start time, up to the current time, adding
      * new candles as they become available. Automatically re-draws the graph as candles are provided.
      */
-    function queryLoop(data, onComplete) {
+    function queryLoop(data) {
 
         function now() {
             return new Date();
         }
 
         //Do one render to push out any candles that are sitting in the table:
-        onComplete(data);
+        draw(data, false);
 
         //start time will be set to the last candle, end time will be set to current time rounded to match granularity.
-        var interval = { 'start' : new Date(data.getValue(data.getNumberOfRows() - 1, 0)), 'end' : new Date((Math.round(now().getTime() / granSecs) * granSecs) + 1000) };
+        var interval = { 'start' : new Date(data.getValue(data.getNumberOfRows() - 1, 0))};
+        interval.end = new Date(interval.start.getTime() + granSecs + 1000);
+
         console.log("Last candle: " + interval.start);
         console.log("Next candle: " + interval.end);
 
@@ -177,7 +178,7 @@ OCandlestickChart.prototype.render = function() {
                             data.setValue(data.getNumberOfRows() - 1, 3, candle.openMid);
                             data.setValue(data.getNumberOfRows() - 1, 4, candle.highMid);
                             //Draw now to get animation
-                            onComplete(data);
+                            draw(data, true);
                         }
                         //Avoid re-adding candles.
                         if(interval.start < new Date(candle.time).getTime()) {
@@ -195,12 +196,16 @@ OCandlestickChart.prototype.render = function() {
                     //Set this so when user turns off streaming they stil get candlesticks up to current time.
                     this.stopTime = interval.end;
                     if(timeMultiplier === 1) {
-                        onComplete(data);
+                        draw(data, false);
                     }
                 });
         };
 
-        self.callbackId = setInterval(poll, granSecs / 2);
+        //Attempt to align setInterval to the granularity.
+        var nextCandle = Math.ceil(now().getTime() / granSecs) * granSecs;
+        var startIn = nextCandle - now().getTime() + 1000;
+        console.log('It is: ' + now() + 'Starting poll in: ' + startIn / 1000 + ' seconds');
+        setTimeout( function() { self.callbackId = setInterval(poll, granSecs / 2); poll();}, startIn);
     }
 
     /*
@@ -208,18 +213,21 @@ OCandlestickChart.prototype.render = function() {
      */
     if(this.streamingEnabled) {
         //update endtime to now.
-        queryFixed( function(data) { queryLoop(data, draw); });
+        queryFixed( function(data) { queryLoop(data); });
     } else {
-        queryFixed(draw);
+        queryFixed( function(data) { draw(data, false) });
     }
 
     /*
      * Render the data to a chart.
      */
-    function draw(data) {
+    function draw(data, animate) {
         console.log("Draw started.");
         //Set up extra chart options.
         self.chartOpts.title = self.instrument + " Candlesticks";
+        if(animate) {
+            self.chartOpts.animation = { 'duration' : 1000, 'easing' : 'linear' };
+        }
         self.chartOpts.legend = { 'position' : 'none' };
         //Set up extra control options:
         self.controlOpts.ui.minRangeSize = granSecs * 2;
