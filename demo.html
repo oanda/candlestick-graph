@@ -19,7 +19,7 @@
                 var now = new Date();
 
                 var chart = new OCandlestickChart(document.getElementById('dashboard'), 
-                                document.getElementById('chart'), document.getElementById('control'));
+                                document.getElementById('chart'), document.getElementById('control'), document.getElementById('error'));
 
                 //Will run chart with default values.
                 google.setOnLoadCallback(function() { chart.render() });
@@ -197,6 +197,9 @@
             #control {
                 height : 50px;
             }
+            #error {
+                margin:8px;
+            }
         </style>
     </head>
 
@@ -235,6 +238,7 @@
         <div id='dashboard'>
             <div id='chart'></div>
             <div id='control'></div>
+            <div id='error'</div>
         </div>
     </body>
 </html>

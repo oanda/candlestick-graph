@@ -42,10 +42,14 @@ You can also configure oandajs to add a auth token or change the API endpoint UR
 ```
 
 ###HTML Structure
-The candlestick chart requires two DOM elements: one for the candlestick chart and one for the line chart that must both we wrapped in the same parent container.
+The candlestick chart requires three DOM elements: one for the candlestick chart, one for the line chart, which must both be wrapped in the same parent container, and an error message container which can go anywhere.
+
 A typical setup may look like this:
 
 ```HTML
+<div id="error">
+    <!-- Error messages will be displayed here -->
+</div>
 <div id="parent">
     <div id="chart">
         <!-- Candlestick chart will be displayed here -->
@@ -100,14 +104,18 @@ You can call the render method any time to re-render the chart if necessary.
 ###Changing Chart Data
 Currently, the OCandlestickChart class allows you to change the granularity, start time, and instrument of an already created chart. Doing so will cause the chart to re-render with new data.
 
-|Method Name|Effect|
-|-----------|------|
-|setGranularity|Changes the granularity of candle's for given instrument from given start and end times.|
-|setStartTime|Gets candles from the given start time|
-|setEndTime|Gets candles to the given end time|
-|setInstrument|Get candles for the given instrument|
+|Method Name|Effect|Returns|
+|-----------|------|-------|
+|setGranularity|Changes the granularity of candle's for given instrument from given start and end times.|The granularity being used by the chart after attempted change|
+|setStartTime|Gets candles from the given start time|The start time used by the chart after attempted change|
+|setEndTime|Gets candles to the given end time|The end time used by the chart after attempted change|
+|setInstrument|Get candles for the given instrument|The instrument being used by the chart after attempted change|
 
 **Note:** No error checking is done on any of the values passed to these functions.
+
+###Custom Errors
+
+To display a custom error in the error container, you can call `myChart.timedError("Oops", 3000)` which will display the error on screen for 3 seconds.
 
 ###Enabling Streaming
 To have the chart update automatically with the latest candlesticks, the `streamingEnabled` flag can be set to true.

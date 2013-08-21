@@ -1,5 +1,8 @@
 //OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandlestickChart.
-function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts, dimensionOpts) {
+function OCandlestickChart(dashElement, chartElement, controlElement, errorElement, candleOpts, dimensionOpts) {
+
+    //Store reference to parent container for error display:
+    this.parentContainer = errorElement;
 
     //Set up defaults
     candleOpts = candleOpts || {};
@@ -22,7 +25,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.chartOpts = {
         'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
         'hAxis' : { 'slantedText' : false },
-        'animation' : { 'duarion' : 100, 'easing' : 'in'}
+        'animation' : { 'duration' : 100, 'easing' : 'out'}
     };    
 
     this.chart = new google.visualization.ChartWrapper({
@@ -163,7 +166,17 @@ OCandlestickChart.prototype.render = function() {
 
                     for(var j = 0 ; j < response.candles.length; j++) {
                         var candle = response.candles[j];
-                        //Avoid re-adding partial candles.
+                        //Update partial candles.
+                        if(data.getValue(data.getNumberOfRows() - 1, 0).getTime() === new Date(candle.time).getTime()) {
+                            console.log("Updating candle: " + new Date(candle.time));
+                            data.setValue(data.getNumberOfRows() - 1, 1, candle.lowMid);
+                            data.setValue(data.getNumberOfRows() - 1, 2, candle.closeMid);
+                            data.setValue(data.getNumberOfRows() - 1, 3, candle.openMid);
+                            data.setValue(data.getNumberOfRows() - 1, 4, candle.highMid);
+                            //Draw now to get animation
+                            onComplete(data);
+                        }
+                        //Avoid re-adding candles.
                         if(interval.start < new Date(candle.time).getTime()) {
                             data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
                             timeMultiplier = 0;
@@ -191,6 +204,8 @@ OCandlestickChart.prototype.render = function() {
      * If no data table is provided, create one using the above method.
      */
     if(this.streamingEnabled) {
+        //update endtime to now.
+        this.endTime = new Date();
         queryFixed( function(data) { queryLoop(data, draw); });
     } else {
         queryFixed(draw);
@@ -228,51 +243,78 @@ OCandlestickChart.prototype.reset = function() {
 
 OCandlestickChart.prototype.setGranularity = function(granularity) {
 
-    //TODO: Validation.
-    this.granularity = granularity;
-    this.reset();
-    this.render();
+    if(this.granularities.indexOf(granularity) < 0) {
+        this.timedError("Not a valid granularity!");
+    } else {
+        this.granularity = granularity;
+        this.reset();
+        this.render();
+    }
+    return this.granularity;
 };
 
 OCandlestickChart.prototype.setInstrument = function(instrument) {
 
-    //TODO: Validation?
     this.instrument = instrument;
     this.reset();
     this.render();
+    return this.instrument;
 };
 
 OCandlestickChart.prototype.setStartTime = function(params) {
     
-    //TODO:Validation.
-    this.startTime = new Date(params.year    || this.startTime.getFullYear(), 
-                              params.month   || this.startTime.getMonth(), 
-                              params.day     || this.startTime.getDate(), 
-                              params.hours   || this.startTime.getHours(),
-                              params.minutes || this.startTime.getMinutes(), 
-                              params.seconds || this.startTime.getSeconds()
-                              );
-    this.reset();
-    this.render();
+    
+    var newStartTime = new Date(params.year    || this.startTime.getFullYear(), 
+                                params.month   || this.startTime.getMonth(), 
+                                params.day     || this.startTime.getDate(), 
+                                params.hours   || this.startTime.getHours(),
+                                params.minutes || this.startTime.getMinutes(), 
+                                params.seconds || this.startTime.getSeconds());
+
+    if(newStartTime >= this.endTime.getTime()) {
+        this.timedError("Start time set to be greater than or equal to end time");
+    } else { 
+        this.startTime = newStartTime;
+        this.reset();
+        this.render();
+    }
+    return this.startTime;
 };
 
 OCandlestickChart.prototype.setEndTime = function(params) {
+    
+    var newEndTime  = new Date(params.year    || this.endTime.getFullYear(),
+                               params.month   || this.endTime.getMonth(),
+                               params.day     || this.endTime.getDate(),
+                               params.hours   || this.endTime.getHours(), 
+                               params.minutes || this.endTime.getMinutes(), 
+                               params.seconds || this.endTime.getSeconds());
 
-    this.endTime = new Date( params.year    || this.endTime.getFullYear(),
-                             params.month   || this.endTime.getMonth(),
-                             params.day     || this.endTime.getDate(),
-                             params.hours   || this.endTime.getHours(), 
-                             params.minutes || this.endTime.getMinutes(), 
-                             params.seconds || this.endTime.getSeconds());
-    this.reset();
-    this.render();
+    if(newEndTime <= this.startTime.getTime()) {
+        this.timedError("End time set less than or equal to start time.");
+    } else {
+        this.endTime = newEndTime;
+        this.reset();
+        this.render();
+    }
+    return this.endTime;
 };
 
 OCandlestickChart.prototype.toggleStreaming = function(streamingEnabled) {
 
     this.streamingEnabled = streamingEnabled;
     this.reset();
+    this.endTime = new Date();
     this.render();
+};
+
+OCandlestickChart.prototype.timedError = function(errorString, timeout) {
+
+    var error = google.visualization.errors.addError(this.parentContainer, errorString, "", 
+            {'type' : 'error',
+             'style' : 'font-size:1em;'});
+    setTimeout(function() {google.visualization.errors.removeError(error);}, timeout || 5000);
+
 };
 
 OCandlestickChart.util = {
