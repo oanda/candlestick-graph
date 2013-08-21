@@ -11,7 +11,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, candleOpts
     this.granularity = candleOpts.granularity || 'M30';
     this.instrument = candleOpts.instrument || 'EUR_USD';
     this.startTime = candleOpts.startTime || todayAtMidnight;
-    this.endTime = candleOpts.stopTime || new Date();
+    this.endTime = candleOpts.endTime || new Date();
 
     //Chart controls
     this.dash = new google.visualization.Dashboard(dashElement);
@@ -194,5 +194,5 @@ OCandlestickChart.util = {
         var start = new Date(year, month, 1);
         var end = new Date(year, parseInt(month, 10) + 1, 1);
         return (end - start)/(1000 * 60 * 60 * 24);
-    }
+    },
 };
