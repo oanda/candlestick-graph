@@ -1,37 +1,57 @@
-//OCandlestickChart. The O prefix is to avoid a naming conflict with google's CandlestickChart.
+// OCandlestickChart
+// Renders midpoint based candlesticks as a candlestick chart.
+// OANDA, 2013
+
+/* Constructor: Creates a new chart, sets up default chart and chart display options, creates and binds chart to control.
+ * Arguments:
+ * dashElement    : DOM object
+ * chatElement    : DOM object
+ * controlElement : DOM object
+ * errorElement   : DOM object
+ * candleOpts     : Object
+ * dimensionOpts  : Object
+ *
+ * Refer to README.md for more detailed argument information.
+ */
 function OCandlestickChart(dashElement, chartElement, controlElement, errorElement, candleOpts, dimensionOpts) {
 
     //Store reference to parent container for error display:
     this.parentContainer = errorElement;
 
-    //Set up defaults
-    candleOpts = candleOpts || {};
     dimensionOpts = dimensionOpts || { chart : {}, control : {} };
 
+    //Set up default chart options (granularity, start time, end time, instrument, etc).
+    candleOpts = candleOpts || {};
+
+    //Default start time set to beginning of current day.
     var todayAtMidnight = new Date();
     todayAtMidnight.setHours(0,0,0);
-    //Chart range variables
+    this.startTime = candleOpts.startTime || todayAtMidnight;
+
     this.granularity = candleOpts.granularity || 'M30';
     this.instrument = candleOpts.instrument || 'EUR_USD';
-    this.startTime = candleOpts.startTime || todayAtMidnight;
+
+    //Default end time set to current time.
     this.endTime = candleOpts.endTime || new Date();
 
+    //Streaming related variables. Streaming off by default.
     this.streamingEnabled = candleOpts.streamingEnabled || false;
-    this.callbackId = 0;
+    this.callbacks = { 'timeout' : 0, 'interval' : 0};
 
-    //Chart controls
+    //Create dashboard which will control candlestick chart and control.
     this.dash = new google.visualization.Dashboard(dashElement);
 
+    //Immutable chart options:
     this.chartOpts = {
         'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
         'hAxis' : { 'slantedText' : false },
     };    
-
     this.chart = new google.visualization.ChartWrapper({
         'chartType' : 'CandlestickChart',
         'containerId' : chartElement,
     });
 
+    //Immutable control options:
     this.controlOpts = {
         'filterColumnIndex': 0,
         'ui': {
@@ -45,12 +65,12 @@ function OCandlestickChart(dashElement, chartElement, controlElement, errorEleme
             },
         }
     };
-
     this.control = new google.visualization.ControlWrapper({
         'controlType' : 'ChartRangeFilter',
         'containerId' : controlElement,
     });
 
+    //Allow the control element to manipulate the chart.
     this.dash.bind(this.control, this.chart);
 
     //Set up the granularity table as 'private' variable:
@@ -78,27 +98,36 @@ function OCandlestickChart(dashElement, chartElement, controlElement, errorEleme
         'M'   : -1,
     };
 
-    //The 'this' qualified methods are accessible to class instances
+    //The 'this' qualified methods are accessible to class instances.
+    //Month granulairy in seconds will be based on the given year/month.
     this.granularityMap = function(year, month) {
         var daysInMonth = OCandlestickChart.util.getDaysInMonth(year, month);
         grans['M'] = daysInMonth * 24 * 60 * 60;
         return grans;
     };
-
+    
+    //Expose list of all possible granulairy values.
     this.granularities = Object.keys(grans);
 }
 
+/* render: Queries the OANDA API for candlesticks in the set time range with the set granulairty, and updates the chart with the data.
+ *         If streaming is enabled, a polling loop will be started to fetch and update the chart with new candles.
+ */
 OCandlestickChart.prototype.render = function() {
 
+    //Month granularity in seconds will be based off start time, which may cause synchronization issues while streaming
+    //monthly candlesticks. It is unlikely that you will stream monthly candlesticks.
     var granSecs = this.granularityMap(this.startTime.getFullYear(), this.startTime.getMonth())[this.granularity] * 1000;
 
+    //Create instance of data table with the proper columns.
     var data = new google.visualization.DataTable();
     data.addColumn('datetime', 'Time');
-    data.addColumn('number', 'lowMid');
-    data.addColumn('number', 'closeMid');
-    data.addColumn('number', 'openMid');
-    data.addColumn('number', 'highMid');
+    data.addColumn('number', 'Low');
+    data.addColumn('number', 'Close');
+    data.addColumn('number', 'Open');
+    data.addColumn('number', 'High');
 
+    //Preserve self-reference.
     var self = this;
     
     /* Queries the API for a fixed amount of candles, calls the onComplete method with the completed data set.
@@ -109,13 +138,14 @@ OCandlestickChart.prototype.render = function() {
         //5000 candles can exist, we must break the time interval into 5000 candles chunks.
         var intervals = [self.startTime];
         var dateIter = self.startTime;
-        while((self.endTime - dateIter) > granSecs * 5000) {
+        while((self.endTime - dateIter) >= (granSecs * 5000)) {
             dateIter = new Date(dateIter.getTime() + granSecs * 5000);
             intervals.push(dateIter);
         }
-        intervals.push(self.endTime);
+        //Add 1 second since API only returns candles past and not on the given end time.
+        intervals.push(new Date(self.endTime.getTime() + 1000));
        
-        //Recursive function to get candles in all intervals.
+        //Recursive function that gets candles between all necessary intervals.
         function getData(i) {
             if(i+1 < intervals.length) {
                 OANDA.rate.history(self.instrument, { 'start' : intervals[i].toISOString(),
@@ -150,18 +180,18 @@ OCandlestickChart.prototype.render = function() {
             return new Date();
         }
 
-        //Do one render to push out any candles that are sitting in the table:
+        //Do one render to push out any candles that are sitting in the table (i.e. the user turns on streaming
+        //after leaving chart open for a while).
         draw(data, false);
 
-        //start time will be set to the last candle, end time will be set to current time rounded to match granularity.
+        //start time will be set to the last candle, end time will be set to the next possible candle.
         var interval = { 'start' : new Date(data.getValue(data.getNumberOfRows() - 1, 0))};
         interval.end = new Date(interval.start.getTime() + granSecs + 1000);
 
-        console.log("Last candle: " + interval.start);
-        console.log("Next candle: " + interval.end);
+        //Multiplies granularity added to end time to progress over intervals where no candles are returned.
+        var granMultiplier = 0;
 
-        //Get the difference between the time of the last candle and our current time:
-        var timeMultiplier = 0;
+        //Polls the API for new candlesticks, setting the start and end times based on last displayed candle in chart.
         var poll = function() {
             console.log("Polled at: " + now());
             OANDA.rate.history(self.instrument, {'start' : interval.start.toISOString(), 'end' : interval.end.toISOString(),
@@ -170,63 +200,70 @@ OCandlestickChart.prototype.render = function() {
 
                     for(var j = 0 ; j < response.candles.length; j++) {
                         var candle = response.candles[j];
-                        //Update partial candles.
+                        //If a candle is returned with a timestamp equal to the last displayed candle, attempt to
+                        //update the last displayed candle with new data.
                         if(data.getValue(data.getNumberOfRows() - 1, 0).getTime() === new Date(candle.time).getTime()) {
-                            console.log("Updating candle: " + new Date(candle.time));
                             data.setValue(data.getNumberOfRows() - 1, 1, candle.lowMid);
                             data.setValue(data.getNumberOfRows() - 1, 2, candle.closeMid);
                             data.setValue(data.getNumberOfRows() - 1, 3, candle.openMid);
                             data.setValue(data.getNumberOfRows() - 1, 4, candle.highMid);
-                            //Draw now to get animation
+                            //Draw now to show candle being update with animatione effect.
                             draw(data, true);
+                            continue;
                         }
-                        //Avoid re-adding candles.
-                        if(interval.start < new Date(candle.time).getTime()) {
-                            data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
-                            timeMultiplier = 0;
-                        }
+                        //Make sure no already seen candles are added as new rows.
+                        //if(interval.start < new Date(candle.time).getTime()) {
+                        data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
+                        granMultiplier = 0;
+                        //}
                     }
 
-                    timeMultiplier++;
+                    //If no row is added, granMultiplier will be non-zero, and this will be incremented to some value > 1.
+                    //If a row is added, granMultiplier will be zero and will be incremented to one (having no effect).
+                    granMultiplier++;
 
+                    //Set the start time to be the latest candle displayed.
                     interval.start = data.getValue(data.getNumberOfRows() - 1, 0);
-                    console.log('Setting new start time: ' + interval.start);
-                    interval.end = new Date(interval.start.getTime() + granSecs * timeMultiplier + 1000);
-                    console.log('Setting new end time: ' + interval.end);
-                    //Set this so when user turns off streaming they stil get candlesticks up to current time.
-                    this.stopTime = interval.end;
-                    if(timeMultiplier === 1) {
+                    //Set the end time to the next time where a candle should be returned.
+                    //An offset of 1000 seconds is required since the API only returns candles past a given end time.
+                    interval.end = new Date(interval.start.getTime() + granSecs * granMultiplier + 1000);
+
+                    //Only re-render if rows were added
+                    if(granMultiplier === 1) {
                         draw(data, false);
                     }
                 });
         };
 
-        //Attempt to align setInterval to the granularity.
+        //Attempt to round up current time to match granularity.
         var nextCandle = Math.ceil(now().getTime() / granSecs) * granSecs;
+
+        //Set a delay before polling interval is started to synchronize each poll with the approximate time
+        //the next candle should be ready.
         var startIn = nextCandle - now().getTime() + 1000;
-        console.log('It is: ' + now() + 'Starting poll in: ' + startIn / 1000 + ' seconds');
-        setTimeout( function() { self.callbackId = setInterval(poll, granSecs / 2); poll();}, startIn);
+        console.log('It is: ' + now() + ' Starting poll in: ' + startIn / 1000 + ' seconds');
+        //Poll 4 times as frequently as the granularity to allow updating partial candles (since candlesticks may change before the next candle is released).
+        self.callbacks.timeout = setTimeout( 
+                function() { self.callbacks.interval = setInterval(poll, granSecs / 4); poll();}, startIn);
     }
 
-    /*
-     * If no data table is provided, create one using the above method.
-     */
+    //If streaming is enabled, first get all candles from the start time to now, then start a polling loop.
     if(this.streamingEnabled) {
         //update endtime to now.
         queryFixed( function(data) { queryLoop(data); });
     } else {
-        queryFixed( function(data) { draw(data, false) });
+        queryFixed( function(data) { draw(data, false); });
     }
 
     /*
-     * Render the data to a chart.
+     * Renders the data to the chart; Animation is optional since it really messes up the
+     * sliding action of the chart control.
      */
     function draw(data, animate) {
-        console.log("Draw started.");
         //Set up extra chart options.
         self.chartOpts.title = self.instrument + " Candlesticks";
         if(animate) {
-            self.chartOpts.animation = { 'duration' : 1000, 'easing' : 'linear' };
+            self.chartOpts.animation = { 'duration' : 1000, 'easing' : 'out' };
         }
         self.chartOpts.legend = { 'position' : 'none' };
         //Set up extra control options:
@@ -240,6 +277,8 @@ OCandlestickChart.prototype.render = function() {
     }
 };
 
+/* Clears the chart and control with their internal reset methods and cancels and polling.
+ */
 OCandlestickChart.prototype.reset = function() {
 
     var controlHandle = this.control.getControl();
@@ -247,10 +286,12 @@ OCandlestickChart.prototype.reset = function() {
     controlHandle.resetControl();
     chartHandle.clearChart();
     
-    //Stop setInterval from executing.
-    clearInterval(this.callbackId);
+    clearInterval(this.callbacks.interval);
+    clearTimeout(this.callbacks.timeout);
 };
 
+/* Changes the granularity of the candles displayed on the chart. Will reset the chart.
+ */
 OCandlestickChart.prototype.setGranularity = function(granularity) {
 
     if(this.granularities.indexOf(granularity) < 0) {
@@ -263,6 +304,8 @@ OCandlestickChart.prototype.setGranularity = function(granularity) {
     return this.granularity;
 };
 
+/* Changes the instrument of the candles shown in the chart. Will reset the chart.
+ */
 OCandlestickChart.prototype.setInstrument = function(instrument) {
 
     this.instrument = instrument;
@@ -271,6 +314,8 @@ OCandlestickChart.prototype.setInstrument = function(instrument) {
     return this.instrument;
 };
 
+/* Changes the start time of the displayed candles. Will reset the chart.
+ */
 OCandlestickChart.prototype.setStartTime = function(params) {
     
     
@@ -291,6 +336,8 @@ OCandlestickChart.prototype.setStartTime = function(params) {
     return this.startTime;
 };
 
+/* Changes the end time of the displayed candles. Will reset the chart.
+ */
 OCandlestickChart.prototype.setEndTime = function(params) {
     
     var newEndTime  = new Date(params.year    || this.endTime.getFullYear(),
@@ -310,14 +357,19 @@ OCandlestickChart.prototype.setEndTime = function(params) {
     return this.endTime;
 };
 
+/* Toggles streaming on & off.
+ */
 OCandlestickChart.prototype.toggleStreaming = function(streamingEnabled) {
 
     this.streamingEnabled = streamingEnabled;
-    this.reset();
     this.endTime = new Date();
+    this.reset();
     this.render();
 };
 
+/*
+ * Displays and error string for the specified amount of time to the DOM object which acts as the error container.
+ */
 OCandlestickChart.prototype.timedError = function(errorString, timeout) {
 
     var error = google.visualization.errors.addError(this.parentContainer, errorString, "", 
@@ -327,6 +379,8 @@ OCandlestickChart.prototype.timedError = function(errorString, timeout) {
 
 };
 
+/* 'Static' utility functions
+ */
 OCandlestickChart.util = {
     'getDaysInMonth' : function(year, month) {
         var start = new Date(year, month, 1);

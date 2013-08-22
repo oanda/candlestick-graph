@@ -1,4 +1,4 @@
-Simple-Rates-Graph
+Candlestick Graph
 ==================
 
 A small library for displaying OANDA's rate history data in a candlestick chart with a line chart control that allows filtering the candlesticks.
