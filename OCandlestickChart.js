@@ -18,7 +18,10 @@ function OCandlestickChart(dashElement, chartElement, controlElement, errorEleme
     //Store reference to parent container for error display:
     this.parentContainer = errorElement;
 
-    dimensionOpts = dimensionOpts || { chart : {}, control : {} };
+    dimensionOpts = dimensionOpts || {};
+    dimensionOpts.chart = dimensionOpts.chart || { 'height' : '80%', 'width' : '80%'};
+    dimensionOpts.control = dimensionOpts.control || { 'height': '80%', 'width' : '100%'};
+
 
     //Set up default chart options (granularity, start time, end time, instrument, etc).
     candleOpts = candleOpts || {};
@@ -43,7 +46,7 @@ function OCandlestickChart(dashElement, chartElement, controlElement, errorEleme
 
     //Immutable chart options:
     this.chartOpts = {
-        'chartArea' :  {'width' : dimensionOpts.chart.width || '80%', 'height' : dimensionOpts.chart.height || '80%' },
+        'chartArea' :  { 'width' : dimensionOpts.chart.width, 'height' : dimensionOpts.chart.height },
         'hAxis' : { 'slantedText' : false },
     };    
     this.chart = new google.visualization.ChartWrapper({
