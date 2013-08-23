@@ -213,7 +213,7 @@ OCandlestickChart.prototype.render = function() {
                         }
                         //Make sure no already seen candles are added as new rows.
                         //if(interval.start < new Date(candle.time).getTime()) {
-                        if(data.getNumberOfRows() >= 15) {
+                        if(data.getNumberOfRows() > 15) {
                             data.removeRow(0);
                         }
                         data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
@@ -284,13 +284,23 @@ OCandlestickChart.prototype.render = function() {
  */
 OCandlestickChart.prototype.reset = function() {
 
-    var controlHandle = this.control.getControl();
-    var chartHandle = this.chart.getChart();
-    controlHandle.resetControl();
-    chartHandle.clearChart();
+    if(this.control) {
+        var controlHandle = this.control.getControl();
+        controlHandle.resetControl();
+    }
+
+    if(this.chart) {
+        var chartHandle = this.chart.getChart();
+        chartHandle.clearChart();
+    }
     
-    clearInterval(this.callbacks.interval);
-    clearTimeout(this.callbacks.timeout);
+    if(this.callbacks.interval > 0) {
+        clearInterval(this.callbacks.interval);
+    }
+
+    if(this.callbacks.timeout > 0) {
+        clearTimeout(this.callbacks.timeout);
+    }
 };
 
 /* Changes the granularity of the candles displayed on the chart. Will reset the chart.
