@@ -213,6 +213,9 @@ OCandlestickChart.prototype.render = function() {
                         }
                         //Make sure no already seen candles are added as new rows.
                         //if(interval.start < new Date(candle.time).getTime()) {
+                        if(data.getNumberOfRows() >= 15) {
+                            data.removeRow(0);
+                        }
                         data.addRow([new Date(candle.time), candle.lowMid, candle.closeMid, candle.openMid, candle.highMid]);
                         granMultiplier = 0;
                         //}
