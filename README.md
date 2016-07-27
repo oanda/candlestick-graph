@@ -4,9 +4,10 @@ Candlestick Graph
 A small library for displaying OANDA's rate history data in a candlestick chart with a line chart control that allows filtering the candlesticks.
 
 ##Browser Compatibility
-This library has only been testing in Google Chrome v28.
+This library has only been testing in Google Chrome v28+.
 
 ##Setup
+Edit demo.html, and set Auth Token and Account ID.
 
 ###JavaScript Dependencies
 Before including the `OCandlestickChart` file, both oandajs and Google's JavaScript API have to be loaded.

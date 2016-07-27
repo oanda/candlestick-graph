@@ -4,13 +4,16 @@
     <head>
         <title>Simple rates graph</title>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-        <script src="https://rawgithub.com/mrpoulin/oandajs/update/oanda.js"></script>
+        <script src="http://developer.oanda.com/oandajs/oanda.js"></script>
         <script src="https://www.google.com/jsapi"></script>
         <script src="./OCandlestickChart.js"></script>
 
         <script>
+            OANDA.auth.token = "<<TOKEN>>";
+            OANDA.auth.enabled = true;
+            var accountId = '<<ACCOUNT ID>>';
 
-            OANDA.baseURL = "http://api-sandbox.oanda.com";
+            OANDA.baseURL = "https://api-fxpractice.oanda.com";
             google.load("visualization", "1.1", {packages:["corechart", "controls"]});
 
             $('document').ready( function() {
@@ -18,7 +21,7 @@
                 //So we don't have to keep making new date objects..
                 var now = new Date();
 
-                var chart = new OCandlestickChart(document.getElementById('dashboard'), 
+                var chart = new OCandlestickChart(document.getElementById('dashboard'),
                                 document.getElementById('chart'), document.getElementById('control'), document.getElementById('error'));
 
                 //Will run chart with default values.
@@ -32,7 +35,7 @@
                 }
 
                 //Populate the instrument select box:
-                OANDA.rate.instruments(['instrument'], function(response) {
+                OANDA.rate.instruments(accountId, ['instrument'], function(response) {
                     for(var i = 0; i < response.instruments.length; i++) {
                         var instrument = response.instruments[i].instrument;
                         $('#instrumentSelector').append($('<option>', { value : instrument, text : instrument }));
@@ -51,7 +54,7 @@
                 $('#stopDate .year').val(now.getFullYear());
 
                 //Populate the month select box:
-                var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 
+                var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
                 'September', 'October', 'November', 'December'];
                 for(var i = 0; i < months.length; i++)
                 {
@@ -70,7 +73,7 @@
                     var selectedMonth = $selectBox.children('.month').val();
                     $selectBox.children('.day').empty();
 
-                    var numDays = 0; 
+                    var numDays = 0;
                     if(selectedMonth == date.getMonth() && selectedYear == date.getFullYear()) {
                         numDays = date.getDate();
                     } else {
@@ -79,7 +82,7 @@
 
                     for(var i = 1; i <= numDays; i++) {
                         $selectBox.children('.day').append($('<option>', { value : i, text : i}));
-                    }    
+                    }
                 }
                 populateDaySelect($('#startDate'));
                 populateDaySelect($('#stopDate'));
@@ -98,7 +101,7 @@
                     var newYear = $('#startDate .year').val();
                     populateDaySelect($('#startDate'));
                     chart.setStartTime({ 'year' : newYear });
-                    
+
                 });
 
                 $('#startDate .month').change(function() {
